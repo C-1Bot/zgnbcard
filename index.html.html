@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心无杂念 - 知行合一</title>
+    <style>
+        :root {
+            --primary-color: #d81e06;
+            --bg-color: #1a1a1a;
+            --card-width: min(85vw, 360px);
+            --card-height: min(136vw, 576px);
+            --text-color: #333;
+            --gold: #faddad;
+        }
+
+        body {
+            background-color: #111;
+            background-image: 
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noiseFilter)' fill='white' opacity='0.15'/%3E%3C/svg%3E"),
+                radial-gradient(circle at 50% 50%, #2a2a2a 0%, #111 100%);
+            background-repeat: repeat, no-repeat;
+            background-position: 0 0, center center;
+            background-size: 300px 300px, cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 边缘暗角（vignette），让中心更突出 */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 缓慢移动的红色扫描线，增加赛博感 */
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 19px,
+                rgba(216,30,6,0.05) 19px,
+                rgba(216,30,6,0.05) 20px
+            );
+            background-size: 100% 20px;
+            pointer-events: none;
+            animation: scanlines 28s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes scanlines {
+            from { background-position: 0 0; }
+            to { background-position: 0 20px; }
+        }
+
+        .scene {
+            width: var(--card-width);
+            height: var(--card-height);
+            perspective: 1200px;
+            margin-bottom: 30px;
+            z-index: 1;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #b31217 0%, #e52d27 100%);
+            color: var(--gold);
+            transform: rotateY(0deg);
+            z-index: 2;
+        }
+
+        .card-front {
+            background: #fff;
+            color: var(--text-color);
+            transform: rotateY(180deg);
+            z-index: 1;
+            background-image: radial-gradient(#f0f0f0 10%, transparent 10%);
+            background-size: 20px 20px;
+        }
+
+        .pattern {
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 10px);
+            z-index: 0;
+            border-radius: 20px;
+        }
+
+        .zgnb-text {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: 5px;
+            z-index: 1;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+            font-family: 'Impact', sans-serif;
+        }
+
+        .chart-icon {
+            width: 160px;
+            height: 140px;
+            z-index: 1;
+            filter: drop-shadow(0 8px 16px rgba(0,0,0,0.45));
+            animation: float 7s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            50%      { transform: translateY(-10px) translateX(6px); }
+        }
+
+        .chart-glow {
+            stroke: rgba(255, 240, 200, 0.65);
+            stroke-width: 12;
+            filter: blur(5px);
+            opacity: 0.75;
+        }
+
+        .chart-line {
+            stroke: var(--gold);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .chart-fill {
+            fill: rgba(250, 221, 173, 0.20);
+        }
+
+        .slogan-small {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            z-index: 1;
+            margin-top: 20px;
+        }
+
+        .quote-container {
+            border: 4px double var(--primary-color);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.95);
+            position: relative;
+        }
+
+        #quote-text {
+            font-size: 1.6rem;
+            line-height: 1.6;
+            font-weight: bold;
+            text-align: center;
+            color: #222;
+        }
+
+        .quote-decor {
+            position: absolute;
+            color: var(--primary-color);
+            opacity: 0.2;
+            font-size: 4rem;
+            font-family: serif;
+        }
+        .quote-top { top: 10px; left: 10px; }
+        .quote-bottom { bottom: 10px; right: 10px; transform: rotate(180deg); }
+
+        .btn-container {
+            z-index: 10;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            width: var(--card-width);
+        }
+
+        .draw-btn {
+            background: linear-gradient(to right, #d81e06, #ff4d4d);
+            border: none;
+            padding: 18px 30px;
+            color: white;
+            font-size: 1.3rem;
+            line-height: 1.4;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(216, 30, 6, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+            letter-spacing: 1px;
+            outline: none;
+            min-width: 100px;
+            flex: 1;
+            max-width: 110px;
+            text-align: center;
+        }
+
+        .draw-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(216, 30, 6, 0.4);
+        }
+
+        .draw-btn.reset {
+            background: linear-gradient(to right, #555, #777);
+        }
+
+        .draw-btn.verify {
+            background: linear-gradient(to right, #0066cc, #3399ff);
+        }
+
+        /* 验牌模态框样式 */
+        #quotes-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        }
+
+        .modal-content h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        #quotes-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        #quotes-list li {
+            padding: 12px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 1.25rem;
+            line-height: 1.5;
+        }
+
+        .view-icon {
+            font-size: 1.4rem;
+            cursor: pointer;
+            margin-right: 12px;
+            display: inline-block;
+            width: 30px;
+            text-align: center;
+        }
+
+        #close-modal {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: block;
+            margin: 20px auto 0;
+        }
+
+        @media (max-height: 700px) {
+            .scene { margin-bottom: 15px; }
+            .zgnb-text { font-size: 3rem; }
+            #quote-text { font-size: 1.3rem; }
+            .chart-icon { width: 130px; height: 110px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scene">
+        <div class="card" id="card">
+            <div class="card-face card-back">
+                <div class="pattern"></div>
+                <div style="flex:1"></div>
+                <div class="zgnb-text">ZGNB</div>
+                
+                <svg class="chart-icon" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+                    <path class="chart-glow" d="M 8 82 L 20 74 L 32 79 L 45 62 L 58 70 L 72 53 L 85 46 L 98 51 L 110 44" fill="none"/>
+                    <path class="chart-line" d="M 8 82 L 20 74 L 32 79 L 45 62 L 58 70 L 72 53 L 85 46 L 98 51 L 110 44" fill="none"/>
+                    <path class="chart-fill" d="M 8 82 L 20 74 L 32 79 L 45 62 L 58 70 L 72 53 L 85 46 L 98 51 L 110 44 L 110 90 L 8 90 Z"/>
+                </svg>
+                
+                <div class="slogan-small">心无杂念 · 知行合一</div>
+                <div style="flex:1"></div>
+            </div>
+
+            <div class="card-face card-front">
+                <div class="quote-container">
+                    <div class="quote-decor quote-top">❝</div>
+                    <p id="quote-text">点击抽取<br>今日交易心法</p>
+                    <div class="quote-decor quote-bottom">❝</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-container">
+        <button class="draw-btn" id="drawBtn">点击<br>抽取</button>
+        <button class="draw-btn reset" id="resetBtn">重置<br>卡背</button>
+        <button class="draw-btn verify" id="verifyBtn">我要<br>验牌</button>
+    </div>
+
+    <!-- 验牌模态框 -->
+    <div id="quotes-modal">
+        <div class="modal-content">
+            <h2>语录列表</h2>
+            <ul id="quotes-list"></ul>
+            <button id="close-modal">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        const quotes = [
+            "市场没有证明你是对时候，你就是错的",
+            "心无杂念，知行合一",
+            "拿住不动",
+            "在这个市场里边，你不亏钱才叫赚钱，而不是不赚钱叫亏",
+            "当你觉得舒服的时候，恰恰是风险最大的时刻",
+            "蹬起来就卖！",
+            "不追、不动、不慌、不乱摸",
+            "慢就是快",
+            "赚钱的票不要做亏",
+            "顺大势，逆小势",
+            "只选最美，只买最强，只拿最硬",
+            "赚大钱是逆人性的",
+            "谋定而后动",
+            "只输时间不输钱",
+            "不要熵增，也不要小路过载",
+            "别沾沾自喜，也别自我怀疑",
+            "坚持做对的事，时间会证明你是对的",
+            "只有成功他妈才是成功他妈。你失败了一百次，第一百零一次失败，这个失败也不是成功他妈",
+            "不要因为做了正确的操作而出现了错误的结果就否定自己",
+            "你选到了没干，是你本来就不想干",
+            "完美图形干错也要干",
+            "在这个世界上，该是你的，绝逼是你的",
+            "为你的知行合一账户充值",
+            "一切皆有可能，我们要做的是应对",
+            "怕，就会输一辈子",
+            "市场总会奖励信仰坚定的人",
+            "时刻要充满敬畏之心，如履薄冰",
+            "戒骄戒躁",
+            "物极必反",
+            "一切以盘面为准",
+            "积小胜为大胜",
+            "闷声发大财",
+            "物来则应，过去不留",
+            "一切都是最好的安排",
+            "留得青山在，一定有下一个小米",
+            "永远不要对你期待的事情抱有不切实际的幻想",
+            "风吹哪页读哪页",
+            "人生就是莫名其妙",
+            "你越想找好的，你越是接盘",
+            "早上涨，晚上涨，早晚得上涨",
+            "拿不住就卖。卖完之后你的世界安静了，你的心就静下来了，你可以更多的去学习",
+            "赚了钱了拿出来消费",
+            "莫道今年春将近，明年春色倍还人",
+            "王德峰教授说过，如果一个人活了四十年还不相信有命，那此人悟性极差",
+            "大A踏不了空",
+            "看懂哪天做哪天",
+            "只英雄救美，不锦上添花",
+            "就是你能赚多少钱不知道，没人知道，但是你能亏多少钱，那一定是你自己能决定的",
+            "所有挣钱的过程，等待的时间都是很煎熬的",
+            "股市里边赚的是什么钱？大富翁赚的什么钱？就是熬人的钱",
+            "一定要学会屏蔽掉这些噪音，同时建立自己的一个非常良好的心态",
+            "你要学会守株待兔",
+            "踏踏实实",
+            "现在赚钱还是以后赚大钱",
+            "要信早信",
+            "不要对票有感情，谁是县长不重要，重要的是你要当县长夫人"
+        ];
+
+        const card = document.getElementById('card');
+        const quoteText = document.getElementById('quote-text');
+        const drawBtn = document.getElementById('drawBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const modal = document.getElementById('quotes-modal');
+        const closeModal = document.getElementById('close-modal');
+        const quotesList = document.getElementById('quotes-list');
+
+        let isFlipped = false;
+
+        // 填充所有语录列表
+        quotes.forEach(q => {
+            const li = document.createElement('li');
+            const viewIcon = document.createElement('span');
+            viewIcon.className = 'view-icon';
+            viewIcon.textContent = '🔍';
+            viewIcon.dataset.quote = q;
+            li.appendChild(viewIcon);
+            li.appendChild(document.createTextNode(q));
+            quotesList.appendChild(li);
+        });
+
+        // 查看图标点击事件
+        document.querySelectorAll('.view-icon').forEach(icon => {
+            icon.addEventListener('click', function() {
+                quoteText.textContent = this.dataset.quote;
+                card.classList.add('is-flipped');
+                isFlipped = true;
+                modal.style.display = 'none';
+                drawBtn.textContent = "点击抽取";
+            });
+        });
+
+        function getRandomQuote() {
+            return quotes[Math.floor(Math.random() * quotes.length)];
+        }
+
+        function flipCard() {
+            if (!isFlipped) {
+                quoteText.textContent = getRandomQuote();
+                card.classList.add('is-flipped');
+                isFlipped = true;
+                drawBtn.innerHTML = "点击<br>抽取";
+            } else {
+                card.classList.remove('is-flipped');
+                isFlipped = false;
+                drawBtn.innerHTML = "抽取<br>中...";
+
+                setTimeout(() => {
+                    quoteText.textContent = getRandomQuote();
+                    card.classList.add('is-flipped');
+                    isFlipped = true;
+                    drawBtn.innerHTML = "点击<br>抽取";
+                }, 800);
+            }
+        }
+
+        // 点击抽取逻辑
+        card.addEventListener('click', flipCard);
+        drawBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            flipCard();
+        });
+
+        // 重置卡背
+        resetBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            card.classList.remove('is-flipped');
+            isFlipped = false;
+            quoteText.innerHTML = "点击抽取<br>今日交易心法";
+            drawBtn.innerHTML = "点击<br>抽取";
+        });
+
+        // 打开验牌模态框
+        verifyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modal.style.display = 'flex';
+        });
+
+        // 关闭模态框
+        closeModal.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
