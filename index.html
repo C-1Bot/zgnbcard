@@ -33,6 +33,13 @@
             position: relative;
         }
 
+        /* 支持动态视口高度的浏览器使用 100dvh，完美解决地址栏遮挡问题 */
+        @supports (height: 100dvh) {
+            body {
+                height: 100dvh;
+            }
+        }
+
         body::before {
             content: "";
             position: fixed;
@@ -68,7 +75,7 @@
             width: var(--card-width);
             height: var(--card-height);
             perspective: 1200px;
-            margin: 30px 0;
+            margin: 20px 0; /* 全局减少 margin，增加垂直空间 */
             z-index: 1;
         }
 
@@ -304,7 +311,7 @@
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
         }
 
-        .modal-content h2 {
+        .modal-content H2 {
             text-align: center;
             color: var(--primary-color);
             margin-top: 0;
@@ -392,7 +399,7 @@
         .touch-tip.show { opacity: 1; }
 
         @media (max-width: 375px) and (max-height: 667px) {
-            .scene { margin: 20px 0; }
+            .scene { margin: 10px 0; } /* 小屏进一步压缩 margin */
             .zgnb-text { font-size: 3rem; }
             #quote-text { font-size: 1.3rem; }
             .chart-icon { width: 130px; height: 110px; }
@@ -434,9 +441,9 @@
 
             <div class="card-face card-front">
                 <div class="quote-container">
-                    <div class="quote-decor quote-top">❝</div>
+                    <div class="quote-decor quote-top">“</div>
                     <p id="quote-text">点击抽取<br>今日交易心法</p>
-                    <div class="quote-decor quote-bottom">❝</div>
+                    <div class="quote-decor quote-bottom">”</div>
                     <!-- 新增：右下角小字提醒 -->
                     <div class="disclaimer">仅图一乐，不构成任何建议</div>
                 </div>
@@ -451,6 +458,7 @@
         <button class="draw-btn verify" id="verifyBtn">验牌</button>
     </div>
 
+    <!-- 其余 modal 和 script 部分保持不变 -->
     <div id="quotes-modal">
         <div class="modal-content">
             <h2>ZG验姿，我验牌</h2>
@@ -477,6 +485,7 @@
     </div>
 
     <script>
+        // script 部分完全保持原样，无需修改
         const quotes = [
             {text: "谋定而后动。", code: "M01"},
             {text: "顺大势，逆小势", code: "M02"},
@@ -538,6 +547,7 @@
             {text: "散户最重要的是心态，是不要和这个市场杠，要从自身找原因", code: "M57"}
         ];
 
+        // 以下 script 内容与原文件完全一致，未作任何改动
         const card = document.getElementById('card');
         const quoteText = document.getElementById('quote-text');
         const drawBtn = document.getElementById('drawBtn');
