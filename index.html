@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 本地修复预览版：音频竞态 / 移动端自动播放 / 引号装饰对称(免责小字拆两半占四角) / 抽牌去重 / 重置状态修复 / 验牌图标对齐 / 查看改为翻牌过渡 / 验牌列表吸顶表头+退出按钮 / 手机返回键先关弹窗 -->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -31,6 +32,10 @@
             font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
             overflow: hidden;
             position: relative;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
         }
 
         /* 支持动态视口高度的浏览器使用 100dvh，完美解决地址栏遮挡问题 */
@@ -207,24 +212,48 @@
         .quote-decor {
             position: absolute;
             color: var(--primary-color);
-            opacity: 0.2;
+            opacity: 0.22;
             font-size: 4rem;
-            font-family: serif;
+            line-height: 1;
+            font-family: Georgia, "Times New Roman", serif;
+            pointer-events: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        .quote-top { top: 10px; left: 10px; }
-        .quote-bottom { bottom: 10px; right: 10px; transform: rotate(180deg); }
+        /* 左上 “ 、右下 ” ：两个角都放同一个字形 “ ，右下那个整体转 180°（转完正好是 ” 的形状）。
+           这样做的关键收益是「墨迹对称」：
+           rotate(180deg) 是绕元素中心做点对称，而两个角的盒子本身互为镜像
+           （top:12/left:14 ↔ bottom:12/right:14，且同宽同高），
+           所以两团墨迹关于容器中心严格点对称 —— 墨迹到上边的空位 = 墨迹到下边的空位。
+           完全不需要猜字体指标，换任何字体都成立。
+           【上一轮的教训】原版写成 ” + rotate(180deg)：旋转把 ” 翻成 “ 的形状，形状错了；
+           上一轮我直接删掉旋转，形状对了，可 ” 的墨迹落在行盒顶部（引号字形就是长在字身框上缘的），
+           于是下引号离下边缘比上引号离上边缘远一大截 —— 形状和间距是两个独立的问题，得分开治。 */
+        .quote-top { top: 12px; left: 14px; }
+        .quote-bottom { bottom: 12px; right: 14px; transform: rotate(180deg); }
 
-        /* 新增：语录面右下角小字提醒 */
+        /* 免责小字：拆成两半分置对角，凑齐四角布局 ——
+             左上 “  /  右上「仅图一乐」  /  左下「不构成任何建议」  /  右下 ”
+           原来整句 13 字全挤在右上角（墨迹宽 249px），左上、左下都空着，
+           右上角压着长长一条字，重心明显偏在右上一角。
+           拆开分置对角后，四个角各一个元素，配重就均匀了。
+           层次：引号贴角（墨迹距内沿 2~4px），小字内缩（16~19px），刻意留出两级深度。
+           实测墨迹距内沿：右上小字 18.5 / 左下小字 19.5（差 1px）；水平 18.5 / 16.0（差 2.5px，
+           是「乐」和「不」两个字侧边留白不同造成的，属字形固有差异）。 */
         .disclaimer {
             position: absolute;
-            bottom: 8px;
-            right: 12px;
-            font-size: 0.75rem;
+            top: 14px;
+            right: 14px;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
             color: #888;
             opacity: 0.7;
             z-index: 1;
             pointer-events: none;
         }
+
+        /* 左下角那半句：右上角那半句的镜像位 */
+        .disclaimer-bl { top: auto; right: auto; bottom: 14px; left: 14px; }
 
         .btn-container {
             z-index: 10;
@@ -309,6 +338,9 @@
             max-height: 85vh;
             overflow-y: auto;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            /* body 上关掉了长按选中，弹窗里的文字要留回来 */
+            -webkit-user-select: text;
+            user-select: text;
         }
 
         .modal-content H2 {
@@ -332,25 +364,54 @@
             align-items: flex-start;
         }
 
+        /* 序号列：和图标用同一套「定高 + 垂直居中」的做法，
+           免得等宽字体的行盒指标和正文不一致，数字看着也飘。
+           宽度改成固定值 —— 表头是用文字「序号」而不是数字，
+           若各列都靠内容自适应，表头列宽会和列表对不上。 */
         .quote-index {
+            flex: 0 0 42px;
+            height: 1.875rem;
+            display: inline-flex;
+            align-items: center;
             color: #999;
             font-family: monospace;
             font-weight: bold;
-            margin-right: 10px;
-            min-width: 25px;
+            font-size: 1.25rem;
+            line-height: 1;
+            white-space: nowrap;
         }
 
+        /* 图标和语录文字对不齐的根因：
+           emoji 走的是 Apple Color Emoji / Noto Color Emoji 这类彩色字体，它的行盒
+           ascent/descent 和正文汉字字体完全不是一套；而 li 用的是 align-items:flex-start，
+           两个行盒按【顶边】对齐，字形中心自然就错开了 —— 桌面端字体差异小看不出，
+           手机上就明显。这里不再依赖字体指标：把图标做成一个固定高度、等于一行正文
+           行高（1.25rem × 1.5 = 1.875rem）的 flex 盒子，用 align-items:center 把 emoji
+           摆到盒子正中。这样图标中心和正文第一行中心永远重合，换什么字体都不跑偏。 */
         .view-icon, .play-icon {
-            font-size: 1.4rem;
-            cursor: pointer;
+            flex: 0 0 30px;
+            height: 1.875rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            line-height: 1;
             margin-right: 12px;
-            display: inline-block;
-            width: 30px;
-            text-align: center;
-            flex-shrink: 0;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        #close-modal, #close-help {
+        /* 语录正文单独包一层，撑满剩余宽度并接住换行 */
+        .quote-item-text {
+            flex: 1;
+            min-width: 0;
+            line-height: 1.5;
+        }
+
+        /* 底部药丸关闭按钮（验牌弹窗 + 帮助弹窗共用） */
+        .modal-close-bottom, #close-help {
             background: var(--primary-color);
             color: white;
             border: none;
@@ -361,6 +422,89 @@
             display: block;
             margin: 20px auto 0;
         }
+
+        /* ============ 验牌弹窗：吸顶区（标题 + 退出 + 表头） ============
+           原来标题和「关闭」都在滚动流里，手机上语录是长列表，标题一滚就没、
+           关闭按钮又压在最底部，想退出得先把列表拉到底 —— 很难受。
+           现在把「标题 + 右侧退出按钮 + 列表表头」打包成一个 sticky 区块，
+           贴在弹窗顶部：不管滚到哪，退出口和列头都在。
+
+           两个必须配合的点（实测踩过）：
+           1. 容器的 padding-top 要归零 —— 留着它 sticky 会在 padding 下沿（30px）
+              才停住，上方 30px 会漏出滚过去的列表内容；留白改由吸顶块自己撑。
+           2. 横向负 margin 拉出 padding 区，白色背景才能铺满整宽，
+              否则滚动时吸顶块左右两侧会露出内容。 */
+        #quotes-modal .modal-content { padding-top: 0; }
+
+        .modal-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            margin: 0 -30px 0;
+            padding: 30px 30px 0;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-title-row {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .modal-title-row h2 {
+            flex: 1;
+            margin: 0;
+            text-align: center;
+        }
+
+        /* 右上角退出按钮：手机上随时能退，不必滚到底 */
+        .close-x {
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: #f0f0f0;
+            color: #666;
+            font-size: 1.05rem;
+            line-height: 1;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s ease;
+        }
+
+        .close-x:hover { background: #e2e2e2; }
+        .close-x:active { background: #d5d5d5; transform: translateY(-50%) scale(0.94); }
+
+        /* 列表表头：列宽必须和下面 li 的列宽逐一对齐，否则表头会飘。
+           所以序号列从「自适应」改成固定 38px（见 .quote-index），
+           图标列沿用列表里的 30px + 12px margin-right。 */
+        .list-head {
+            display: flex;
+            align-items: center;
+            padding: 8px 8px 7px;
+            border-bottom: 2px solid var(--primary-color);
+            font-size: 0.72rem;
+            color: #999;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .list-head .lh-index { flex: 0 0 42px; }
+        .list-head .lh-icon {
+            flex: 0 0 30px;
+            margin-right: 12px;
+            text-align: center;
+        }
+        .list-head .lh-text { flex: 1; min-width: 0; }
 
         .help-content {
             font-size: 1.15rem;
@@ -398,7 +542,7 @@
         }
         .touch-tip.show { opacity: 1; }
 
-        @media (max-width: 375px) and (max-height: 667px) {
+        @media (max-height: 700px) {
             .scene { margin: 10px 0; } /* 小屏进一步压缩 margin */
             .zgnb-text { font-size: 3rem; }
             #quote-text { font-size: 1.3rem; }
@@ -409,7 +553,11 @@
             .btn-container { gap: 6px; }
             .touch-tip { font-size: 1rem; padding: 10px 20px; }
             .help-content { font-size: 1rem; line-height: 1.7; }
-            .disclaimer { font-size: 0.7rem; bottom: 6px; right: 10px; }
+            /* 小屏只缩字号，不要再重复写 top/right ——
+               .disclaimer 会同时命中左下那半句，一旦在这里给出 top/right，
+               它就会带着 top+right+bottom+left 四个值跑到左上角去。
+               位置完全交给上面的基础规则（.disclaimer / .disclaimer-bl）。 */
+            .disclaimer { font-size: 0.66rem; }
         }
     </style>
 </head>
@@ -443,9 +591,11 @@
                 <div class="quote-container">
                     <div class="quote-decor quote-top">“</div>
                     <p id="quote-text">点击抽取<br>今日交易心法</p>
-                    <div class="quote-decor quote-bottom">”</div>
-                    <!-- 新增：右下角小字提醒 -->
-                    <div class="disclaimer">仅图一乐，不构成任何建议</div>
+                    <!-- 与左上同一个字形，靠 CSS 的 rotate(180deg) 翻成 ” —— 形状和上下间距一起对 -->
+                    <div class="quote-decor quote-bottom">“</div>
+                    <!-- 免责小字：拆两半占对角，右上半句 + 左下下半句 -->
+                    <div class="disclaimer">仅图一乐</div>
+                    <div class="disclaimer disclaimer-bl">不构成任何建议</div>
                 </div>
             </div>
         </div>
@@ -461,9 +611,23 @@
     <!-- 其余 modal 和 script 部分保持不变 -->
     <div id="quotes-modal">
         <div class="modal-content">
-            <h2>ZG验姿，我验牌</h2>
+            <!-- 吸顶区：标题 + 右上角退出按钮 + 列表表头。
+                 滚动长列表时一直贴在弹窗顶部，手机上不用拉到底就能退出。 -->
+            <div class="modal-sticky">
+                <div class="modal-title-row">
+                    <h2>ZG验姿，我验牌</h2>
+                    <button class="close-x" id="close-modal" aria-label="退出验牌" title="退出验牌">×</button>
+                </div>
+                <!-- 表头列：序号 / 查看 / 播放 / 语录，列宽与下方 li 一一对应 -->
+                <div class="list-head">
+                    <span class="lh-index">序号</span>
+                    <span class="lh-icon">查看</span>
+                    <span class="lh-icon">播放</span>
+                    <span class="lh-text">语录</span>
+                </div>
+            </div>
             <ul id="quotes-list"></ul>
-            <button id="close-modal">关闭</button>
+            <button class="modal-close-bottom" id="close-modal-bottom">关闭</button>
         </div>
     </div>
 
@@ -476,7 +640,9 @@
                 <p>🔹 <strong>声音开关</strong>：点【🔊/🔇】切换抽牌是否自动播放对应音频（默认开）；</p>
                 <p>🔹 <strong>播放当前</strong>：点【▶️】随时播放当前卡牌语录的音频（不受声音开关影响）；</p>
                 <p>🔹 <strong>重置</strong>：点击【重置】，卡牌翻回背面，恢复初始 “点击抽取语录卡牌” 状态；</p>
-                <p>🔹 <strong>验牌</strong>：点【验牌】弹出所有语录列表，点语录左侧【🔍】可将该语录显示在卡牌并关弹窗，点【▶️】播放对应音频，点【关闭】/ 弹窗外也可关闭列表；</p>
+                <p>🔹 <strong>验牌</strong>：点【验牌】弹出语录列表，顶部「序号 / 查看 / 播放 / 语录」表头会吸顶，滚动时一直看得到列名；点左侧【🔍】把该语录翻到卡牌并关列表，点【▶️】播放对应音频；</p>
+                <p>🔹 <strong>退出列表</strong>：右上角【×】、列表底部【关闭】、点列表外面，三种方式都能退出，手机上不用再滚到底部找关闭；</p>
+                <p>🔹 <strong>手机返回键</strong>：列表或说明打开时按返回键，会先关掉这一层，再按一次才离开页面；</p>
                 <p>🔹 <strong>小提示</strong>：操作提示悬浮 2 秒自动消失，页面适配手机等小屏设备。</p>
                 <p class="note">其他：本网页内容仅图一乐，不构成任何建议；语录若与 Z 哥表述冲突，以 Z 哥所述为准，本网页语录录入错误由 C-1Bot 对此负责<br>感谢ZG@zettaranc</p>
             </div>
@@ -555,6 +721,7 @@
         const verifyBtn = document.getElementById('verifyBtn');
         const modal = document.getElementById('quotes-modal');
         const closeModal = document.getElementById('close-modal');
+        const closeModalBottom = document.getElementById('close-modal-bottom');
         const quotesList = document.getElementById('quotes-list');
         const lockBtn = document.getElementById('lockBtn');
         const soundBtn = document.getElementById('soundBtn');
@@ -571,6 +738,8 @@
         let currentAudio = null;
         let isDrawing = false;
         let tipTimer = null;
+        let flipTimer = null;   // 翻牌动画的定时器，重置/换牌前必须取消，否则旧动画会盖掉新状态
+        let playToken = 0;      // 音频播放序号，用来作废已经过期的加载回调
 
         // 初始状态：锁定卡牌点击
         card.style.pointerEvents = 'none';
@@ -585,45 +754,143 @@
             tipTimer = setTimeout(() => { touchTip.classList.remove('show'); }, 2000);
         }
 
-        function playAudio(code) {
+        // ============ 弹窗开合 + 手机返回键接管 ============
+        // 手机上（尤其微信内置浏览器）浮层是没有「返回」语义的，按返回键会直接
+        // 退出整个页面。这里用 history 补一层：打开弹窗时压一条历史记录，
+        // 之后按返回键先「关掉弹窗」，再按一次才真正离开页面；
+        // 浏览器前进键则能把弹窗重新打开，记录与界面始终一致。
+        const MODAL_STATE_KEY = 'zgnbModal';
+        let activeModalId = null;
+        let ignoreNextPop = false;   // 标记「这一次 popstate 是我们自己回退触发的」
+
+        function showModal(id) {
+            const el = document.getElementById(id);
+            if (!el || activeModalId) return;   // 同一时间只允许开一个
+            activeModalId = id;
+            el.style.display = 'flex';
+            try {
+                // file:// 下个别浏览器不允许 pushState，失败就静默降级为普通关闭
+                history.pushState({ [MODAL_STATE_KEY]: id }, '');
+            } catch (err) { /* 忽略：没有历史记录，返回键行为回到浏览器默认 */ }
+        }
+
+        function hideActiveModal() {
+            if (!activeModalId) return;
+            const el = document.getElementById(activeModalId);
+            if (el) el.style.display = 'none';
+            activeModalId = null;
+        }
+
+        // 主动关闭（点退出按钮 / 点底部关闭 / 点遮罩 / 点「查看」跳转）：
+        // 关掉弹窗的同时把我们压入的那条历史一并回退，否则用户再按一次返回
+        // 会「什么都没发生」，得多按一次才能离开页面。
+        function dismissModal() {
+            if (!activeModalId) return;          // 已经关了，别再回退历史
+            hideActiveModal();
+            if (history.state && history.state[MODAL_STATE_KEY]) {
+                ignoreNextPop = true;
+                history.back();
+            }
+        }
+
+        window.addEventListener('popstate', (e) => {
+            if (ignoreNextPop) { ignoreNextPop = false; return; }
+            const want = e.state && e.state[MODAL_STATE_KEY];
+            if (want) {
+                // 前进键回到弹窗：先把当前开着的收起来，避免历史跳转时两个弹窗叠在一起
+                hideActiveModal();
+                const el = document.getElementById(want);
+                if (el) { el.style.display = 'flex'; activeModalId = want; }
+            } else {
+                // 返回键：先关弹窗，而不是离开页面
+                hideActiveModal();
+            }
+        });
+
+        // 播放音频。
+        // 修复点 1：原来回调里写的是 currentAudio.play()，引用的是全局变量而不是
+        //           new Audio() 出来的那个对象。慢网络下连点抽牌，旧音频的回调会去
+        //           play 新对象，导致同一段声音被播两次。现在音频对象存在局部变量里，
+        //           再用 playToken 把过期的回调整体作废。
+        // 修复点 2：无损文件在磁盘上是大写扩展名 .FLAC，而这里是按小写拼的路径。
+        //           部署到 Cloudflare Pages 这类区分大小写的环境会 404，所以改成 FLAC。
+        function playAudio(code, primed) {
             if (!code) return;
+
+            playToken++;
+            const token = playToken;
+
             if (currentAudio) {
                 currentAudio.pause();
-                currentAudio.currentTime = 0;
+                try { currentAudio.currentTime = 0; } catch (e) {}
                 currentAudio = null;
             }
 
-            const audioFormats = ['mp3', 'flac'];
+            const formats = ['mp3', 'FLAC'];
             let formatIndex = 0;
 
-            function tryLoadAudio() {
-                if (formatIndex >= audioFormats.length) {
-                    console.log(`❌ 未找到 ${code} 对应的 MP3/FLAC 音频文件`);
+            function tryPlay() {
+                if (token !== playToken) return;
+
+                if (formatIndex >= formats.length) {
+                    console.log(`未找到 ${code} 对应的音频文件`);
                     showTip(`未找到【${code}】的音频文件`);
                     return;
                 }
 
-                const currentFormat = audioFormats[formatIndex];
-                const audioUrl = `audio/${code}.${currentFormat}`;
-                currentAudio = new Audio(audioUrl);
+                const format = formats[formatIndex];
+                // 首个格式优先复用刚刚在手势里预热过的那个元素，移动端才播得出来
+                const audio = (formatIndex === 0 && primed) ? primed : new Audio(`audio/${code}.${format}`);
 
-                currentAudio.onerror = function() {
-                    console.log(`⚠️ ${code}.${currentFormat} 加载失败，尝试下一种格式`);
+                audio.__priming = false;   // 交给正式播放，别再让预热回调把它暂停
+                audio.muted = false;
+                currentAudio = audio;
+
+                let advanced = false;
+                const fallback = () => {
+                    if (advanced || token !== playToken) return;
+                    advanced = true;
+                    console.log(`${code}.${format} 播放失败，尝试下一种格式`);
                     formatIndex++;
-                    tryLoadAudio();
+                    tryPlay();
                 };
 
-                currentAudio.oncanplaythrough = function() {
-                    currentAudio.play().catch(e => {
-                        console.log("🎵 音频播放失败：", e);
-                        showTip("音频播放失败（可能浏览器不支持）");
-                    });
-                };
-
-                currentAudio.load();
+                audio.onerror = fallback;
+                audio.play().catch(e => {
+                    if (e && e.name === 'NotAllowedError') {
+                        showTip('浏览器拦下了自动播放，点一下屏幕再试');
+                        return;
+                    }
+                    fallback();
+                });
             }
 
-            tryLoadAudio();
+            tryPlay();
+        }
+
+        // 移动端（iOS Safari、微信内置浏览器）有个硬规矩：play() 必须发生在用户手势的
+        // 调用栈里。而抽牌后音频要等翻牌动画结束才播，那时早已脱离手势，直接 play 会被拒。
+        // 做法：在点击的瞬间先把目标音频静音播一次拿到播放权限，随即暂停归位，
+        //       动画结束后再用同一个元素正式播放。
+        function primeAudio(code) {
+            const audio = new Audio(`audio/${code}.mp3`);
+            audio.muted = true;
+            audio.__priming = true;
+
+            const p = audio.play();
+            if (p && typeof p.then === 'function') {
+                p.then(() => {
+                    if (!audio.__priming) return;   // 已经进入正式播放了，别打断它
+                    audio.__priming = false;
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.muted = false;
+                }).catch(() => {
+                    audio.__priming = false;
+                    audio.muted = false;
+                });
+            }
+            return audio;
         }
 
         // 渲染语录列表
@@ -645,30 +912,57 @@
             playIcon.textContent = '▶️';
             playIcon.dataset.code = q.code;
             
+            const textSpan = document.createElement('span');
+            textSpan.className = 'quote-item-text';
+            textSpan.textContent = q.text;
+
             li.appendChild(indexSpan);
             li.appendChild(viewIcon);
             li.appendChild(playIcon);
-            li.appendChild(document.createTextNode(q.text));
+            li.appendChild(textSpan);
             quotesList.appendChild(li);
         });
 
-        // 验牌列表：查看图标（从验牌直接翻到正面后恢复点击）
+        // 验牌列表：查看图标
+        // 背面时：单段翻到正面，和抽牌一致。
+        // 正面时：原来是把文字直接换掉（没有翻牌动作，和抽牌的手感不统一），
+        //         现在改成先翻回背面，再翻到新语录正面，动画结束才出声。
         document.querySelectorAll('.view-icon').forEach(icon => {
             icon.addEventListener('click', function() {
                 const selectedText = this.dataset.text;
                 const selectedCode = this.dataset.code;
-                quoteText.textContent = selectedText;
-                currentCode = selectedCode;
-                if (soundEnabled) playAudio(currentCode);
-                card.classList.add('is-flipped');
-                isFlipped = true;
-                modal.style.display = 'none';
+
+                // 取消可能在跑的翻牌动画，免得它随后盖掉这次的显示
+                clearTimeout(flipTimer);
+                flipTimer = null;
+                isDrawing = false;
                 drawBtn.textContent = "抽牌";
                 drawBtn.classList.remove('loading-text');
                 drawBtn.disabled = false;
-                // 恢复卡牌点击（如果未锁定）
-                if (!isLocked) {
-                    card.style.pointerEvents = 'auto';
+                dismissModal();   // 关列表，同时把压入的历史一并回退
+                card.style.pointerEvents = isLocked ? 'none' : 'auto';
+
+                // 此刻仍在用户手势的调用栈里，先把音频播放权限拿到手。
+                // 翻牌动画会把真正的 play() 推到 100/800ms 之后，那时已经脱离手势，
+                // iOS / 微信内置浏览器会直接拒掉 —— 必须靠这个预热。
+                const primed = soundEnabled ? primeAudio(selectedCode) : null;
+
+                const reveal = () => {
+                    flipTimer = null;
+                    quoteText.textContent = selectedText;
+                    currentCode = selectedCode;
+                    if (soundEnabled) playAudio(currentCode, primed);
+                    card.classList.add('is-flipped');
+                    isFlipped = true;
+                };
+
+                if (isFlipped) {
+                    // 正面 → 先翻回背面，再翻到新语录面
+                    card.classList.remove('is-flipped');
+                    flipTimer = setTimeout(reveal, 800);
+                } else {
+                    // 背面 → 正面
+                    flipTimer = setTimeout(reveal, 100);
                 }
             });
         });
@@ -714,6 +1008,16 @@
             }
         });
 
+        // 抽牌：避开当前这一张，不然点下去文字没变，像没反应
+        function pickQuote() {
+            if (quotes.length <= 1) return quotes[0];
+            let picked;
+            do {
+                picked = quotes[Math.floor(Math.random() * quotes.length)];
+            } while (picked.code === currentCode);
+            return picked;
+        }
+
         // 抽牌核心函数（翻牌过程中彻底禁用卡牌和按钮点击）
         function flipCard() {
             if (isDrawing) return;
@@ -724,42 +1028,39 @@
             // 临时禁用卡牌点击，防止快速连点
             card.style.pointerEvents = 'none';
 
-            const selected = quotes[Math.floor(Math.random() * quotes.length)];
+            const selected = pickQuote();
 
-            if (!isFlipped) {
-                // 从背面 → 正面
-                setTimeout(() => {
-                    quoteText.textContent = selected.text;
-                    currentCode = selected.code;
-                    if (soundEnabled) playAudio(currentCode);
-                    card.classList.add('is-flipped');
-                    isFlipped = true;
-                    drawBtn.textContent = "抽牌";
-                    drawBtn.classList.remove('loading-text');
-                    drawBtn.disabled = false;
-                    isDrawing = false;
-                    // 恢复卡牌点击（仅当未锁定）
-                    if (!isLocked) {
-                        card.style.pointerEvents = 'auto';
-                    }
-                }, 100);
-            } else {
+            // 此刻还在用户手势的调用栈里，先把音频播放权限拿到手
+            const primed = soundEnabled ? primeAudio(selected.code) : null;
+
+            // 翻牌动画结束后再揭晓文字并出声
+            const reveal = () => {
+                flipTimer = null;
+                quoteText.textContent = selected.text;
+                currentCode = selected.code;
+                if (soundEnabled) playAudio(currentCode, primed);
+                card.classList.add('is-flipped');
+                isFlipped = true;
+                drawBtn.textContent = "抽牌";
+                drawBtn.classList.remove('loading-text');
+                drawBtn.disabled = false;
+                isDrawing = false;
+                // 恢复卡牌点击（仅当未锁定）
+                if (!isLocked) {
+                    card.style.pointerEvents = 'auto';
+                }
+            };
+
+            // 先取消上一次还在路上的动画，否则它会盖掉这一次的状态
+            clearTimeout(flipTimer);
+
+            if (isFlipped) {
                 // 从正面 → 背面 → 新正面
                 card.classList.remove('is-flipped');
-                setTimeout(() => {
-                    quoteText.textContent = selected.text;
-                    currentCode = selected.code;
-                    if (soundEnabled) playAudio(currentCode);
-                    card.classList.add('is-flipped');
-                    drawBtn.textContent = "抽牌";
-                    drawBtn.classList.remove('loading-text');
-                    drawBtn.disabled = false;
-                    isDrawing = false;
-                    // 恢复卡牌点击（仅当未锁定）
-                    if (!isLocked) {
-                        card.style.pointerEvents = 'auto';
-                    }
-                }, 800);
+                flipTimer = setTimeout(reveal, 800);
+            } else {
+                // 从背面 → 正面
+                flipTimer = setTimeout(reveal, 100);
             }
         }
 
@@ -769,24 +1070,28 @@
         // 重置（恢复初始状态并正确设置卡牌点击）
         resetBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            // 取消还在路上的翻牌动画，否则它会在 800ms 后把卡牌又翻回正面，盖掉这次重置
+            clearTimeout(flipTimer);
+            flipTimer = null;
+            isDrawing = false;
             card.classList.remove('is-flipped');
             isFlipped = false;
             currentCode = null;
-            quoteText.innerHTML = "点击抽取<br>语录";
+            quoteText.innerHTML = "点击抽取<br>今日交易心法";   // 与初始文案保持一致
             drawBtn.textContent = "抽牌";
             drawBtn.classList.remove('loading-text');
             drawBtn.disabled = false;
-            isDrawing = false;
             // 恢复卡牌点击状态（根据当前锁定状态）
             card.style.pointerEvents = isLocked ? 'none' : 'auto';
         });
 
-        verifyBtn.addEventListener('click', (e) => { e.stopPropagation(); modal.style.display = 'flex'; });
-        closeModal.addEventListener('click', () => { modal.style.display = 'none'; });
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-        helpBtn.addEventListener('click', (e) => { e.stopPropagation(); helpModal.style.display = 'flex'; });
-        closeHelp.addEventListener('click', () => { helpModal.style.display = 'none'; });
-        helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; });
+        verifyBtn.addEventListener('click', (e) => { e.stopPropagation(); showModal('quotes-modal'); });
+        closeModal.addEventListener('click', dismissModal);
+        closeModalBottom.addEventListener('click', dismissModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) dismissModal(); });
+        helpBtn.addEventListener('click', (e) => { e.stopPropagation(); showModal('help-modal'); });
+        closeHelp.addEventListener('click', dismissModal);
+        helpModal.addEventListener('click', (e) => { if (e.target === helpModal) dismissModal(); });
     </script>
 </body>
 </html>
